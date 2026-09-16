@@ -2,18 +2,46 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 import logging
+from datetime import datetime
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import ARISTON_SENSOR_TYPES, DOMAIN, AristonSensorEntityDescription
+from ariston import SystemType
+from ariston.const import ConsumptionType, DeviceFeatures, WheType
+
+from .const import (
+    ARISTON_SENSOR_TYPES,
+    DOMAIN,
+    ENERGY_COORDINATOR,
+    AristonSensorEntityDescription,
+)
 from .coordinator import DeviceDataUpdateCoordinator
 from .entity import AristonEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+_LYDOS_HYBRID_ENERGY_FEATURES = {
+    ConsumptionType.DOMESTIC_HOT_WATER_HEATING_PUMP_ELECTRICITY.name,
+    ConsumptionType.DOMESTIC_HOT_WATER_RESISTOR_ELECTRICITY.name,
+}
+
+
+def _is_known_lydos_hybrid_energy_sensor(
+    coordinator: DeviceDataUpdateCoordinator,
+    description: AristonSensorEntityDescription,
+) -> bool:
+    """Keep known Lydos energy sensors subscribed after an initial HTTP 500."""
+    required_features = set(description.device_features or [])
+    return (
+        description.coordinator == ENERGY_COORDINATOR
+        and coordinator.device.system_type == SystemType.VELIS
+        and coordinator.device.whe_type == WheType.LydosHybrid
+        and DeviceFeatures.HAS_METERING in required_features
+        and bool(required_features & _LYDOS_HYBRID_ENERGY_FEATURES)
+    )
 
 
 async def async_setup_entry(
@@ -29,10 +57,13 @@ async def async_setup_entry(
         if (
             coordinator
             and coordinator.device
-            and coordinator.device.are_device_features_available(
-                description.device_features,
-                description.system_types,
-                description.whe_types,
+            and (
+                coordinator.device.are_device_features_available(
+                    description.device_features,
+                    description.system_types,
+                    description.whe_types,
+                )
+                or _is_known_lydos_hybrid_energy_sensor(coordinator, description)
             )
         ):
             ariston_sensors.append(

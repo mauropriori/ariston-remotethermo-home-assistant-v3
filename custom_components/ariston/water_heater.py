@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 
-from ariston.const import SystemType
 from homeassistant.components.water_heater import (
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
@@ -13,12 +12,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE
 from homeassistant.core import HomeAssistant
 
+from ariston.const import LydosPlantMode, SystemType, WheType
+
 from .const import (
     ARISTON_WATER_HEATER_TYPES,
     DOMAIN,
     AristonWaterHeaterEntityDescription,
 )
-from .coordinator import DeviceDataUpdateCoordinator
+from .coordinator import DeviceDataUpdateCoordinator, PendingWrite
 from .entity import AristonEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -141,11 +142,22 @@ class AristonWaterHeater(AristonEntity, WaterHeaterEntity):
         )
 
         await self.device.async_set_water_heater_temperature(temperature)
+        if self.device.whe_type == WheType.LydosHybrid:
+            self.coordinator.pending_writes["temperature"] = PendingWrite(
+                prop="temperature", expected=temperature
+            )
         self.async_write_ha_state()
 
     async def async_set_operation_mode(self, operation_mode):
         """Set operation mode."""
         await self.device.async_set_water_heater_operation_mode(operation_mode)
+        if self.device.whe_type == WheType.LydosHybrid:
+            if operation_mode == LydosPlantMode.BOOST.name:
+                self.coordinator.pending_writes.pop("operation_mode", None)
+            else:
+                self.coordinator.pending_writes["operation_mode"] = PendingWrite(
+                    prop="operation_mode", expected=operation_mode
+                )
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:

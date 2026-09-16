@@ -129,6 +129,7 @@ dmypy.json
 .pyre/
 .storage
 .HA_VERSION
+.test-deps/
 *.db*
 *.log*
 *.yaml

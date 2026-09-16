@@ -28,7 +28,9 @@
           "extra_energy_features": "Extra energy related entities",
           "scan_interval": "Zone Scan Interval (seconds)",
           "energy_scan_interval": "Energy Scan Interval (minutes)",
-          "bus_errors_scan_interval": "Bus Errors Scan Interval (seconds)"
+          "bus_errors_scan_interval": "Bus Errors Scan Interval (seconds)",
+          "enable_energy": "Enable energy polling",
+          "enable_bus_errors": "Enable bus error polling"
         }
       }
     }

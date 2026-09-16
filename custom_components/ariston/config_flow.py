@@ -6,9 +6,6 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-
-from ariston import Ariston, DeviceAttribute
-from ariston.const import ARISTON_API_URL, ARISTON_USER_AGENT
 from homeassistant import config_entries
 from homeassistant.const import (
     CONF_DEVICE,
@@ -18,15 +15,25 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 
+from ariston import Ariston, DeviceAttribute
+from ariston.const import ARISTON_API_URL, ARISTON_USER_AGENT
+
 from .const import (
     API_URL_SETTING,
     API_USER_AGENT,
     BUS_ERRORS_SCAN_INTERVAL,
     DEFAULT_BUS_ERRORS_SCAN_INTERVAL_SECONDS,
+    DEFAULT_ENABLE_BUS_ERRORS,
+    DEFAULT_ENABLE_ENERGY,
     DEFAULT_ENERGY_SCAN_INTERVAL_MINUTES,
     DEFAULT_SCAN_INTERVAL_SECONDS,
     DOMAIN,
+    ENABLE_BUS_ERRORS,
+    ENABLE_ENERGY,
     ENERGY_SCAN_INTERVAL,
+    MIN_BUS_ERRORS_SCAN_INTERVAL_SECONDS,
+    MIN_ENERGY_SCAN_INTERVAL_MINUTES,
+    MIN_SCAN_INTERVAL_SECONDS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -178,6 +185,10 @@ class AristonOptionsFlow(config_entries.OptionsFlow):
         bus_errors_scan_interval = options.get(
             BUS_ERRORS_SCAN_INTERVAL, DEFAULT_BUS_ERRORS_SCAN_INTERVAL_SECONDS
         )
+        enable_energy = options.get(ENABLE_ENERGY, DEFAULT_ENABLE_ENERGY)
+        enable_bus_errors = options.get(
+            ENABLE_BUS_ERRORS, DEFAULT_ENABLE_BUS_ERRORS
+        )
 
         return self.async_show_form(
             step_id="init",
@@ -186,15 +197,29 @@ class AristonOptionsFlow(config_entries.OptionsFlow):
                     vol.Optional(
                         CONF_SCAN_INTERVAL,
                         default=scan_interval,
-                    ): int,
+                    ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL_SECONDS)),
                     vol.Optional(
                         ENERGY_SCAN_INTERVAL,
                         default=energy_scan_interval,
-                    ): int,
+                    ): vol.All(
+                        vol.Coerce(int),
+                        vol.Range(min=MIN_ENERGY_SCAN_INTERVAL_MINUTES),
+                    ),
                     vol.Optional(
                         BUS_ERRORS_SCAN_INTERVAL,
                         default=bus_errors_scan_interval,
-                    ): int,
+                    ): vol.All(
+                        vol.Coerce(int),
+                        vol.Range(min=MIN_BUS_ERRORS_SCAN_INTERVAL_SECONDS),
+                    ),
+                    vol.Optional(
+                        ENABLE_ENERGY,
+                        default=enable_energy,
+                    ): bool,
+                    vol.Optional(
+                        ENABLE_BUS_ERRORS,
+                        default=enable_bus_errors,
+                    ): bool,
                 }
             ),
             last_step=True,

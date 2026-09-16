@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import logging
+from dataclasses import dataclass, field
 
 import voluptuous as vol
-
-from ariston import Ariston, DeviceAttribute, SystemType
-from ariston.const import ARISTON_API_URL, ARISTON_USER_AGENT
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_DEVICE_ID,
@@ -19,8 +19,12 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 from homeassistant.util.unit_system import METRIC_SYSTEM
+
+from ariston import Ariston, DeviceAttribute, SystemType
+from ariston.const import ARISTON_API_URL, ARISTON_USER_AGENT
 
 from .const import (
     API_URL_SETTING,
@@ -29,15 +33,60 @@ from .const import (
     BUS_ERRORS_SCAN_INTERVAL,
     COORDINATOR,
     DEFAULT_BUS_ERRORS_SCAN_INTERVAL_SECONDS,
+    DEFAULT_ENABLE_BUS_ERRORS,
+    DEFAULT_ENABLE_ENERGY,
     DEFAULT_ENERGY_SCAN_INTERVAL_MINUTES,
     DEFAULT_SCAN_INTERVAL_SECONDS,
     DOMAIN,
+    ENABLE_BUS_ERRORS,
+    ENABLE_ENERGY,
     ENERGY_COORDINATOR,
     ENERGY_SCAN_INTERVAL,
+    MIN_BUS_ERRORS_SCAN_INTERVAL_SECONDS,
+    MIN_ENERGY_SCAN_INTERVAL_MINUTES,
+    MIN_SCAN_INTERVAL_SECONDS,
+    SHARED_CLIENTS,
 )
 from .coordinator import DeviceDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class _SharedAristonClient:
+    """One authenticated client shared by entries using the same account."""
+
+    ariston: Ariston = field(default_factory=Ariston)
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    connected: bool = False
+
+
+def _client_key(entry: ConfigEntry, api_url: str, user_agent: str) -> str:
+    """Build a non-reversible key for sharing one account client."""
+    credentials = "\0".join(
+        (
+            entry.data[CONF_USERNAME].strip().casefold(),
+            entry.data[CONF_PASSWORD],
+            api_url,
+            user_agent,
+        )
+    )
+    return hashlib.sha256(credentials.encode()).hexdigest()
+
+
+async def _async_optional_first_refresh(
+    coordinator: DeviceDataUpdateCoordinator, data_name: str
+) -> None:
+    """Refresh optional cloud data without preventing core entity setup."""
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except ConfigEntryNotReady as error:
+        _LOGGER.warning(
+            "Could not fetch optional Ariston %s data; core controls remain "
+            "available and the coordinator will retry later: %s",
+            data_name,
+            error,
+        )
 
 PLATFORMS: list[str] = [
     Platform.BINARY_SENSOR,
@@ -66,66 +115,87 @@ SET_ITEM_BY_ID_SCHEMA = vol.Schema(
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Ariston from a config entry."""
-    ariston = Ariston()
     try:
         api_url_setting = entry.data.get(API_URL_SETTING, ARISTON_API_URL)
 
         api_user_agent = entry.data.get(API_USER_AGENT, ARISTON_USER_AGENT)
 
-        reponse = await ariston.async_connect(
-            entry.data[CONF_USERNAME],
-            entry.data[CONF_PASSWORD],
-            api_url_setting,
-            api_user_agent,
+        domain_data = hass.data.setdefault(DOMAIN, {})
+        shared_clients: dict[str, _SharedAristonClient] = domain_data.setdefault(
+            SHARED_CLIENTS, {}
         )
-        if not reponse:
-            _LOGGER.error(
-                "Failed to connect to Ariston with device: %s",
-                entry.data[CONF_DEVICE].get(DeviceAttribute.NAME),
-            )
-            raise ConfigEntryAuthFailed
+        shared_client = shared_clients.setdefault(
+            _client_key(entry, api_url_setting, api_user_agent),
+            _SharedAristonClient(),
+        )
 
-        device = await ariston.async_hello(
-            entry.data[CONF_DEVICE].get(DeviceAttribute.GW),
-            hass.config.units is METRIC_SYSTEM,
-        )
+        async with shared_client.lock:
+            if not shared_client.connected:
+                response = await shared_client.ariston.async_connect(
+                    entry.data[CONF_USERNAME],
+                    entry.data[CONF_PASSWORD],
+                    api_url_setting,
+                    api_user_agent,
+                )
+                if not response:
+                    _LOGGER.error(
+                        "Failed to connect to Ariston with device: %s",
+                        entry.data[CONF_DEVICE].get(DeviceAttribute.NAME),
+                    )
+                    raise ConfigEntryAuthFailed
+                shared_client.connected = True
+
+            device = await shared_client.ariston.async_hello(
+                entry.data[CONF_DEVICE].get(DeviceAttribute.GW),
+                hass.config.units is METRIC_SYSTEM,
+            )
         if device is None:
             return False
 
         await device.async_get_features()
 
-        scan_interval_seconds = entry.options.get(
-            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SECONDS
+        scan_interval_seconds = max(
+            MIN_SCAN_INTERVAL_SECONDS,
+            entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SECONDS),
         )
         coordinator = DeviceDataUpdateCoordinator(
             hass, device, scan_interval_seconds, COORDINATOR, device.async_update_state
         )
 
-        hass.data.setdefault(DOMAIN, {}).setdefault(
-            entry.unique_id, {COORDINATOR: {}, ENERGY_COORDINATOR: {}}
-        )
-        hass.data[DOMAIN][entry.unique_id][COORDINATOR] = coordinator
+        entry_data = domain_data.setdefault(entry.unique_id, {})
+        entry_data.setdefault(COORDINATOR, None)
+        entry_data.setdefault(ENERGY_COORDINATOR, None)
+        entry_data.setdefault(BUS_ERRORS_COORDINATOR, None)
+        entry_data[COORDINATOR] = coordinator
 
         await coordinator.async_config_entry_first_refresh()
 
-        bus_errors_scan_interval_seconds = entry.options.get(
-            BUS_ERRORS_SCAN_INTERVAL, DEFAULT_BUS_ERRORS_SCAN_INTERVAL_SECONDS
-        )
-        bus_errors_coordinator = DeviceDataUpdateCoordinator(
-            hass,
-            device,
-            bus_errors_scan_interval_seconds,
-            BUS_ERRORS_COORDINATOR,
-            device.async_get_bus_errors,
-        )
-        hass.data[DOMAIN][entry.unique_id][BUS_ERRORS_COORDINATOR] = (
-            bus_errors_coordinator
-        )
-        await bus_errors_coordinator.async_config_entry_first_refresh()
+        if entry.options.get(ENABLE_BUS_ERRORS, DEFAULT_ENABLE_BUS_ERRORS):
+            bus_errors_scan_interval_seconds = max(
+                MIN_BUS_ERRORS_SCAN_INTERVAL_SECONDS,
+                entry.options.get(
+                    BUS_ERRORS_SCAN_INTERVAL,
+                    DEFAULT_BUS_ERRORS_SCAN_INTERVAL_SECONDS,
+                ),
+            )
+            bus_errors_coordinator = DeviceDataUpdateCoordinator(
+                hass,
+                device,
+                bus_errors_scan_interval_seconds,
+                BUS_ERRORS_COORDINATOR,
+                device.async_get_bus_errors,
+            )
+            entry_data[BUS_ERRORS_COORDINATOR] = bus_errors_coordinator
+            await _async_optional_first_refresh(bus_errors_coordinator, "bus error")
 
-        if device.has_metering:
-            energy_interval_minutes = entry.options.get(
-                ENERGY_SCAN_INTERVAL, DEFAULT_ENERGY_SCAN_INTERVAL_MINUTES
+        if device.has_metering and entry.options.get(
+            ENABLE_ENERGY, DEFAULT_ENABLE_ENERGY
+        ):
+            energy_interval_minutes = max(
+                MIN_ENERGY_SCAN_INTERVAL_MINUTES,
+                entry.options.get(
+                    ENERGY_SCAN_INTERVAL, DEFAULT_ENERGY_SCAN_INTERVAL_MINUTES
+                ),
             )
             energy_coordinator = DeviceDataUpdateCoordinator(
                 hass,
@@ -134,8 +204,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 ENERGY_COORDINATOR,
                 device.async_update_energy,
             )
-            hass.data[DOMAIN][entry.unique_id][ENERGY_COORDINATOR] = energy_coordinator
-            await energy_coordinator.async_config_entry_first_refresh()
+            entry_data[ENERGY_COORDINATOR] = energy_coordinator
+            await _async_optional_first_refresh(energy_coordinator, "energy")
 
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

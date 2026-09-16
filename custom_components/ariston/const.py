@@ -1,9 +1,22 @@
 """Constants for the Ariston integration."""
 
+import sys
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-import sys
 from typing import Any, Final
+
+from homeassistant.components.binary_sensor import BinarySensorEntityDescription
+from homeassistant.components.climate import ClimateEntityDescription
+from homeassistant.components.number import NumberEntityDescription
+from homeassistant.components.select import SelectEntityDescription
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntityDescription,
+    SensorStateClass,
+)
+from homeassistant.components.switch import SwitchEntityDescription
+from homeassistant.const import UnitOfEnergy, UnitOfTemperature, UnitOfTime
+from homeassistant.helpers.entity import EntityCategory, EntityDescription
 
 from ariston.const import (
     ARISTON_BUS_ERRORS,
@@ -26,18 +39,6 @@ from ariston.const import (
     VelisDeviceProperties,
     WheType,
 )
-from homeassistant.components.binary_sensor import BinarySensorEntityDescription
-from homeassistant.components.climate import ClimateEntityDescription
-from homeassistant.components.number import NumberEntityDescription
-from homeassistant.components.select import SelectEntityDescription
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntityDescription,
-    SensorStateClass,
-)
-from homeassistant.components.switch import SwitchEntityDescription
-from homeassistant.const import UnitOfEnergy, UnitOfTemperature, UnitOfTime
-from homeassistant.helpers.entity import EntityCategory, EntityDescription
 
 try:
     from homeassistant.components.water_heater import WaterHeaterEntityDescription
@@ -56,12 +57,20 @@ ENERGY_COORDINATOR: Final[str] = "energy_coordinator"
 ENERGY_SCAN_INTERVAL: Final[str] = "energy_scan_interval"
 BUS_ERRORS_COORDINATOR: Final[str] = "bus_errors_coordinator"
 BUS_ERRORS_SCAN_INTERVAL: Final[str] = "bus_errors_scan_interval"
+ENABLE_ENERGY: Final[str] = "enable_energy"
+ENABLE_BUS_ERRORS: Final[str] = "enable_bus_errors"
+SHARED_CLIENTS: Final[str] = "shared_clients"
 API_URL_SETTING: Final[str] = "api_url_setting"
 API_USER_AGENT: Final[str] = "api_user_agent"
 
-DEFAULT_SCAN_INTERVAL_SECONDS: Final[int] = 180
-DEFAULT_ENERGY_SCAN_INTERVAL_MINUTES: Final[int] = 60
-DEFAULT_BUS_ERRORS_SCAN_INTERVAL_SECONDS: Final[int] = 600
+DEFAULT_SCAN_INTERVAL_SECONDS: Final[int] = 600
+DEFAULT_ENERGY_SCAN_INTERVAL_MINUTES: Final[int] = 360
+DEFAULT_BUS_ERRORS_SCAN_INTERVAL_SECONDS: Final[int] = 3600
+MIN_SCAN_INTERVAL_SECONDS: Final[int] = 60
+MIN_ENERGY_SCAN_INTERVAL_MINUTES: Final[int] = 60
+MIN_BUS_ERRORS_SCAN_INTERVAL_SECONDS: Final[int] = 600
+DEFAULT_ENABLE_ENERGY: Final[bool] = False
+DEFAULT_ENABLE_BUS_ERRORS: Final[bool] = False
 
 ATTR_TARGET_TEMP_STEP: Final[str] = "target_temp_step"
 ATTR_HEAT_REQUEST: Final[str] = "heat_request"
@@ -530,10 +539,11 @@ ARISTON_SENSOR_TYPES: list[AristonSensorEntityDescription] = [
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         get_native_value=lambda entity: entity.device.water_heater_current_temperature,
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        get_native_unit_of_measurement=lambda entity: entity.device.water_heater_temperature_unit,
         system_types=[SystemType.VELIS],
         whe_types=[
             WheType.Evo,
+            WheType.LydosHybrid,
         ],
     ),
     AristonSensorEntityDescription(
@@ -570,7 +580,7 @@ ARISTON_BINARY_SENSOR_TYPES: list[AristonBinarySensorEntityDescription] = [
         name=f"{NAME} is heating pump on",
         icon="mdi:heat-pump-outline",
         get_is_on=lambda entity: entity.device.is_heating_pump_on_value,
-        device_features=[DeviceFeatures.HYBRID_SYS],
+        device_features=[DeviceFeatures.HP_SYS],
         system_types=[SystemType.GALEVO],
     ),
     AristonBinarySensorEntityDescription(
@@ -969,11 +979,12 @@ ARISTON_SELECT_TYPES: list[AristonSelectEntityDescription] = [
         key=EvoOneDeviceProperties.MODE,
         name=f"{NAME} operation mode",
         icon="mdi:cog",
+        entity_category=EntityCategory.CONFIG,
         get_current_option=lambda entity: entity.device.water_heater_current_mode_text,
         get_options=lambda entity: entity.device.water_heater_mode_operation_texts,
         select_option=lambda entity,
         option: entity.device.async_set_water_heater_operation_mode(option),
         system_types=[SystemType.VELIS],
-        whe_types=[WheType.Evo],
+        whe_types=[WheType.Evo, WheType.LydosHybrid],
     ),
 ]

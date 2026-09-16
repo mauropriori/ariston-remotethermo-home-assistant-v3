@@ -8,8 +8,11 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from ariston import SystemType
+from ariston.const import EvoOneDeviceProperties, LydosPlantMode, WheType
+
 from .const import ARISTON_SELECT_TYPES, DOMAIN, AristonSelectEntityDescription
-from .coordinator import DeviceDataUpdateCoordinator
+from .coordinator import DeviceDataUpdateCoordinator, PendingWrite
 from .entity import AristonEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -68,4 +71,15 @@ class AristonSelect(AristonEntity, SelectEntity):
     async def async_select_option(self, option: str):
         """Change the selected option."""
         await self.entity_description.select_option(self, option)
+        if (
+            self.entity_description.key == EvoOneDeviceProperties.MODE
+            and self.device.system_type == SystemType.VELIS
+            and self.device.whe_type == WheType.LydosHybrid
+        ):
+            if option == LydosPlantMode.BOOST.name:
+                self.coordinator.pending_writes.pop("operation_mode", None)
+            else:
+                self.coordinator.pending_writes["operation_mode"] = PendingWrite(
+                    prop="operation_mode", expected=option
+                )
         self.async_write_ha_state()

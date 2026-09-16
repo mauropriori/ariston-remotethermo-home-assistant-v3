@@ -1,2 +1,2 @@
-ariston>=0.16.4
+ariston@git+https://github.com/mauropriori/python-ariston-api.git@fac9205b6b8b8c1d032e4af54994dbf38da7ebef
 homeassistant>=2023.1.0

@@ -24,7 +24,10 @@
         "data": {
           "extra_energy_features": "Entità Extra relative al controllo energetico",
           "scan_interval": "Intervallo scansione dati zone (in secondi)",
-          "energy_scan_interval": "Intervallo scansione dati energetici (in minuti)"
+          "energy_scan_interval": "Intervallo scansione dati energetici (in minuti)",
+          "bus_errors_scan_interval": "Intervallo scansione errori bus (in secondi)",
+          "enable_energy": "Abilita scansione dati energetici",
+          "enable_bus_errors": "Abilita scansione errori bus"
         },
         "title": "Configura Ariston"
       }
