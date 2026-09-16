@@ -33,6 +33,11 @@ fails, core climate/water-heater controls still load and the optional
 coordinator retries on its configured schedule. This prevents a Lydos energy
 HTTP 500 from blocking the whole device.
 
+Home Assistant 2026.8 introduced a built-in virtual integration with the same
+`ariston` domain for Midea-protocol air conditioners. It does not support
+Ariston NET products such as Nimbus or Lydos. The hassfest domain-collision
+warning is therefore expected for this custom integration.
+
 
 | [This integration](https://github.com/fustom/ariston-remotethermo-home-assistant-v3)  | [Chomupashchuk's v2 integration](https://github.com/chomupashchuk/ariston-remotethermo-home-assistant-v2) |
 | ------------- | ------------- |
