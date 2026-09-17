@@ -3,11 +3,11 @@ name: Feature request
 about: New device or new (missing) entity
 title: "[FEATURE]"
 labels: enhancement
-assignees: fustom
+assignees: mauropriori
 
 ---
 
-**For new device check my wiki**
+**For a new device, check the upstream wiki**
 https://github.com/fustom/ariston-remotethermo-home-assistant-v3/wiki/Unsupported-whe%7Csystem-type
 
 **For new entity**

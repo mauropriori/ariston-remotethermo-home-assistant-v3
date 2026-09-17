@@ -1,6 +1,6 @@
-[![CodeQL](https://github.com/mauropriori/ariston-remotethermo-home-assistant-v3/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/mauropriori/ariston-remotethermo-home-assistant-v3/actions/workflows/codeql.yml)
-[![HACS Action](https://github.com/mauropriori/ariston-remotethermo-home-assistant-v3/actions/workflows/hacs.yml/badge.svg?branch=main)](https://github.com/mauropriori/ariston-remotethermo-home-assistant-v3/actions/workflows/hacs.yml)
-[![Validate with hassfest](https://github.com/mauropriori/ariston-remotethermo-home-assistant-v3/actions/workflows/hassfest.yml/badge.svg?branch=main)](https://github.com/mauropriori/ariston-remotethermo-home-assistant-v3/actions/workflows/hassfest.yml)
+[![CodeQL](https://github.com/mauropriori/ariston_net/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/mauropriori/ariston_net/actions/workflows/codeql.yml)
+[![HACS Action](https://github.com/mauropriori/ariston_net/actions/workflows/hacs.yml/badge.svg?branch=main)](https://github.com/mauropriori/ariston_net/actions/workflows/hacs.yml)
+[![Validate with hassfest](https://github.com/mauropriori/ariston_net/actions/workflows/hassfest.yml/badge.svg?branch=main)](https://github.com/mauropriori/ariston_net/actions/workflows/hassfest.yml)
 [![HACS Custom Repository](https://img.shields.io/badge/HACS-Custom_repository-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
 
 # Ariston NET for Home Assistant
@@ -161,7 +161,7 @@ config entries are not migrated automatically.
 ## Installation with HACS
 
 1. In HACS, add
-   `https://github.com/mauropriori/ariston-remotethermo-home-assistant-v3` as a
+   `https://github.com/mauropriori/ariston_net` as a
    custom **Integration** repository.
 2. Install **Ariston NET** and restart Home Assistant.
 3. Open **Settings → Devices & services → Add integration → Ariston NET**.
@@ -171,7 +171,7 @@ config entries are not migrated automatically.
 5. Keep the legacy Remote Thermo custom integration disabled while testing, so
    both integrations do not poll the same account.
 
-[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mauropriori&repository=ariston-remotethermo-home-assistant-v3&category=integration)
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mauropriori&repository=ariston_net&category=integration)
 
 For a manual installation, copy `custom_components/ariston_net` into the
 `custom_components` directory under the Home Assistant configuration directory,

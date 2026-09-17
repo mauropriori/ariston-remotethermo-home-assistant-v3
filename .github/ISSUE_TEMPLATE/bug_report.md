@@ -3,11 +3,11 @@ name: Bug report
 about: Create a report to help us improve
 title: "[BUG]"
 labels: bug
-assignees: fustom
+assignees: mauropriori
 
 ---
 
-First of all please check my wikipage: https://github.com/fustom/ariston-remotethermo-home-assistant-v3/wiki and the previous issues (included the closed ones) before you create a new one.
+Before opening a report, check the upstream wiki at https://github.com/fustom/ariston-remotethermo-home-assistant-v3/wiki and this repository's existing issues, including closed ones.
 
 **Describe the bug**
 A clear and concise description of what the bug is.
