@@ -9,8 +9,8 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from ariston import SystemType
-from ariston.const import ConsumptionType, DeviceFeatures, WheType
+from ariston_net_api import SystemType
+from ariston_net_api.const import ConsumptionType, DeviceFeatures, WheType
 
 from .const import (
     ARISTON_SENSOR_TYPES,

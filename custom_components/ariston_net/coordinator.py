@@ -13,8 +13,8 @@ from aiohttp import ClientError
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from ariston import ConnectionException, RateLimitException
-from ariston.base_device import AristonBaseDevice
+from ariston_net_api import ConnectionException, RateLimitException
+from ariston_net_api.base_device import AristonBaseDevice
 
 from .const import DOMAIN
 

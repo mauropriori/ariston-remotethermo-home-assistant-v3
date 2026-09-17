@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC
 import logging
 
-from ariston.const import WheType
+from ariston_net_api.const import WheType
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 

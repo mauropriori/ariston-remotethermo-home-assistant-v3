@@ -8,8 +8,8 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from ariston import SystemType
-from ariston.const import EvoOneDeviceProperties, LydosPlantMode, WheType
+from ariston_net_api import SystemType
+from ariston_net_api.const import EvoOneDeviceProperties, LydosPlantMode, WheType
 
 from .const import ARISTON_SELECT_TYPES, DOMAIN, AristonSelectEntityDescription
 from .coordinator import DeviceDataUpdateCoordinator

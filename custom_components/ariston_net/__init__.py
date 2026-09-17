@@ -23,8 +23,8 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.util.unit_system import METRIC_SYSTEM
 
-from ariston import Ariston, DeviceAttribute, SystemType
-from ariston.const import ARISTON_API_URL, ARISTON_USER_AGENT
+from ariston_net_api import Ariston, DeviceAttribute, SystemType
+from ariston_net_api.const import ARISTON_API_URL, ARISTON_USER_AGENT
 
 from .const import (
     API_URL_SETTING,

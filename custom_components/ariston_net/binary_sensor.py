@@ -6,7 +6,7 @@ import logging
 
 import voluptuous as vol
 
-from ariston.const import DeviceProperties, SystemType
+from ariston_net_api.const import DeviceProperties, SystemType
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_DEVICE_ID

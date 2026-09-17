@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from ariston import Ariston, DeviceAttribute
+from ariston_net_api import Ariston, DeviceAttribute
 from homeassistant.const import CONF_DEVICE, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.util.unit_system import METRIC_SYSTEM

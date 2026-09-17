@@ -1,8 +1,13 @@
-# Ariston NET 0.1.0
+# Ariston NET 0.1.1
 
-This is the first release of the `ariston_net` maintenance fork. It is based on
-fustom's v3 asynchronous integration and retains the project lineage and credit
-described in the README.
+This patch release fixes the config flow failing with `Invalid handler
+specified` when the legacy Remote Thermo integration or its Python dependency is
+also installed. The companion API fork now uses the independent distribution
+name `ariston-net-api` and import namespace `ariston_net_api`, eliminating the
+runtime package collision with upstream `ariston`.
+
+It includes all functionality introduced in the initial 0.1.0 release and
+retains the project lineage and credit described in the README.
 
 ## Highlights
 

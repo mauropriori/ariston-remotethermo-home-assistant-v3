@@ -15,8 +15,8 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 
-from ariston import Ariston, DeviceAttribute
-from ariston.const import ARISTON_API_URL, ARISTON_USER_AGENT
+from ariston_net_api import Ariston, DeviceAttribute
+from ariston_net_api.const import ARISTON_API_URL, ARISTON_USER_AGENT
 
 from .const import (
     API_URL_SETTING,

@@ -42,6 +42,8 @@ Compared with the fustom `main` baseline used by this fork, it adds:
 
 - one authenticated client, discovery cache and serialized request queue shared
   by all config entries using the same account;
+- an independent `ariston_net_api` Python package namespace, preventing the
+  legacy integration's `ariston` dependency from breaking this config flow;
 - a minimum one-second spacing between cloud requests, a 30-second request
   timeout, and server-directed HTTP 429 backoff;
 - no immediate retry storm for HTTP 5xx responses;
@@ -62,7 +64,9 @@ Compared with the fustom `main` baseline used by this fork, it adds:
 - the unique `ariston_net` domain and HACS package name.
 
 The integration uses the matching maintenance fork of `python-ariston-api`,
-pinned to an exact commit for reproducible installs.
+pinned to an exact commit for reproducible installs. Its distribution and
+import namespace are intentionally distinct from upstream so both custom
+integrations can remain installed without sharing incompatible Python modules.
 
 ## Problems addressed
 
@@ -83,6 +87,14 @@ honor the server's retry delay.
 Disabling individual Home Assistant entities does not stop their coordinator.
 Use the integration options to disable energy and bus-error polling or to
 increase the polling intervals.
+
+### Config flow reports `Invalid handler specified`
+
+The legacy integration and early Ariston NET 0.1.0 package both used the global
+Python module name `ariston`. Home Assistant could therefore load the legacy
+library first, which lacks APIs required by this fork and caused the config flow
+import to fail. From 0.1.1 onward this integration exclusively uses the isolated
+`ariston_net_api` namespace.
 
 ### Nimbus can no longer be switched off from Home Assistant
 

@@ -18,7 +18,7 @@ from homeassistant.components.switch import SwitchEntityDescription
 from homeassistant.const import UnitOfEnergy, UnitOfTemperature, UnitOfTime
 from homeassistant.helpers.entity import EntityCategory, EntityDescription
 
-from ariston.const import (
+from ariston_net_api.const import (
     ARISTON_BUS_ERRORS,
     ConsumptionProperties,
     ConsumptionType,

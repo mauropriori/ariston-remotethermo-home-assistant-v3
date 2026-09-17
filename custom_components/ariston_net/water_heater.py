@@ -12,7 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE
 from homeassistant.core import HomeAssistant
 
-from ariston.const import LydosPlantMode, SystemType, WheType
+from ariston_net_api.const import LydosPlantMode, SystemType, WheType
 
 from .const import (
     ARISTON_WATER_HEATER_TYPES,
