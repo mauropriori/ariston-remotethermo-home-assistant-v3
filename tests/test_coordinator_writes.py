@@ -4,7 +4,7 @@ import asyncio
 from unittest import TestCase
 from unittest.mock import AsyncMock, MagicMock
 
-from custom_components.ariston.coordinator import (
+from custom_components.ariston_net.coordinator import (
     DeviceDataUpdateCoordinator,
     PendingWrite,
 )

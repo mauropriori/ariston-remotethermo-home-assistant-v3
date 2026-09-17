@@ -130,7 +130,9 @@ dmypy.json
 .storage
 .HA_VERSION
 .test-deps/
+.test-stubs/
+/python-ariston-api/
 *.db*
 *.log*
 *.yaml
-!custom_components/ariston/*.yaml
+!custom_components/ariston_net/*.yaml

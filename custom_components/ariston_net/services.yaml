@@ -10,7 +10,7 @@ create_vacation:
       required: true
       selector:
         device:
-          integration: ariston
+          integration: ariston_net
     end_date:
       name: End date
       description: Date the vacation ends in the YYYY-mm-dd format.
@@ -26,7 +26,7 @@ set_item_by_id:
       required: true
       selector:
         device:
-          integration: ariston
+          integration: ariston_net
     item_id:
       name: Device or thermostat property
       description: Ariston device or thermostat property

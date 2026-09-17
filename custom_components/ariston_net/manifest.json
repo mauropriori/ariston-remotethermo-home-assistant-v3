@@ -1,6 +1,6 @@
 {
-  "domain": "ariston",
-  "name": "Ariston",
+  "domain": "ariston_net",
+  "name": "Ariston NET",
   "codeowners": ["@mauropriori"],
   "config_flow": true,
   "dependencies": [],

@@ -11,6 +11,7 @@
     },
     "step": {
       "user": {
+        "description": "Maintained Ariston NET fork with shared-account request serialization, conservative polling, isolated optional metrics, and targeted Nimbus/Lydos fixes. Disable any other Remote Thermo integration using the same account before continuing.",
         "data": {
           "password": "Password",
           "username": "Username",
@@ -31,7 +32,7 @@
           "enable_energy": "Enable energy polling",
           "enable_bus_errors": "Enable bus error polling"
         },
-        "title": "Configure Ariston"
+        "title": "Configure Ariston NET"
       }
     }
   }

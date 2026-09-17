@@ -4,7 +4,7 @@ from unittest import TestCase
 
 from homeassistant.components.climate import HVACMode
 
-from custom_components.ariston.climate import AristonThermostat
+from custom_components.ariston_net.climate import AristonThermostat
 
 
 class _FakeDevice:

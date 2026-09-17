@@ -11,9 +11,12 @@
     },
     "step": {
       "user": {
+        "description": "Fork Ariston NET mantenuto con serializzazione delle richieste per account condiviso, polling conservativo, metriche opzionali isolate e correzioni mirate per Nimbus e Lydos. Prima di continuare, disabilita qualsiasi altra integrazione Remote Thermo che usa lo stesso account.",
         "data": {
           "password": "Password",
-          "username": "Nome Utente"
+          "username": "Nome Utente",
+          "api_url_setting": "URL API Ariston",
+          "api_user_agent": "User agent API Ariston"
         }
       }
     }
@@ -29,7 +32,7 @@
           "enable_energy": "Abilita scansione dati energetici",
           "enable_bus_errors": "Abilita scansione errori bus"
         },
-        "title": "Configura Ariston"
+        "title": "Configura Ariston NET"
       }
     }
   }

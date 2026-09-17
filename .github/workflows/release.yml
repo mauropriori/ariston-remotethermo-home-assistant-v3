@@ -5,21 +5,20 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+
 jobs:
   release:
     name: Prepare release
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4.0.0
-      - name: Zip Release
-        uses: TheDoctor0/zip-release@0.7.1
-        with:
-          filename: ariston-remotethermo-home-assistant-v3.zip
-          directory: custom_components/ariston
-      - name: Upload to Release Action
-        uses: Shopify/upload-to-release@v1.0.1
-        with:
-          name: ariston-remotethermo-home-assistant-v3.zip
-          path: custom_components/ariston/ariston-remotethermo-home-assistant-v3.zip
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+      - name: Build HACS archive
+        working-directory: custom_components/ariston_net
+        run: zip -r "${GITHUB_WORKSPACE}/ariston_net.zip" .
+      - name: Upload HACS archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "${GITHUB_WORKSPACE}/ariston_net.zip" --clobber

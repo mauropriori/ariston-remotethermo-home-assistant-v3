@@ -2,6 +2,7 @@
   "config": {
     "step": {
       "user": {
+        "description": "Maintained Ariston NET fork with shared-account request serialization, conservative polling, isolated optional metrics, and targeted Nimbus/Lydos fixes. Disable any other Remote Thermo integration using the same account before continuing.",
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
@@ -23,7 +24,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configure Ariston",
+        "title": "Configure Ariston NET",
         "data": {
           "extra_energy_features": "Extra energy related entities",
           "scan_interval": "Zone Scan Interval (seconds)",

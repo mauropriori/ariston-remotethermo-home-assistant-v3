@@ -10,12 +10,12 @@ from homeassistant.const import CONF_DEVICE, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.util.unit_system import METRIC_SYSTEM
 
-from custom_components.ariston import (
+from custom_components.ariston_net import (
     _async_release_shared_client,
     _SharedAristonClient,
     async_setup_entry,
 )
-from custom_components.ariston.const import DOMAIN, SHARED_CLIENTS
+from custom_components.ariston_net.const import DOMAIN, SHARED_CLIENTS
 
 
 def _entry(entry_id: str):
@@ -111,7 +111,7 @@ class SharedClientLifecycleTests(TestCase):
             ), patch.object(
                 Ariston, "async_hello", new=AsyncMock(return_value=device)
             ), patch(
-                "custom_components.ariston.DeviceDataUpdateCoordinator",
+                "custom_components.ariston_net.DeviceDataUpdateCoordinator",
                 _BlockedCoordinator,
             ):
                 setup_task = asyncio.create_task(async_setup_entry(hass, entry))
@@ -149,7 +149,7 @@ class SharedClientLifecycleTests(TestCase):
             ), patch.object(
                 Ariston, "async_hello", new=AsyncMock(return_value=device)
             ), patch(
-                "custom_components.ariston.DeviceDataUpdateCoordinator",
+                "custom_components.ariston_net.DeviceDataUpdateCoordinator",
                 _FailingCoordinator,
             ):
                 setup_task = asyncio.create_task(async_setup_entry(hass, entry))
