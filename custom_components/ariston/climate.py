@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 
-from ariston.const import PlantMode, ZoneMode, BsbZoneMode
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
@@ -14,6 +13,8 @@ from homeassistant.components.climate import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE
 from homeassistant.core import HomeAssistant
+
+from ariston.const import BsbZoneMode, PlantMode, ZoneMode
 
 from .const import ARISTON_CLIMATE_TYPES, DOMAIN, AristonClimateEntityDescription
 from .coordinator import DeviceDataUpdateCoordinator
@@ -159,7 +160,13 @@ class AristonThermostat(AristonEntity, ClimateEntity):
                     supported_modes.append(HVACMode.COOL)
         if self.device.is_zone_mode_options_contains_time_program(self.zone):
             supported_modes.append(HVACMode.AUTO)
-        if self.device.is_zone_mode_options_contains_off(self.zone):
+        # Nimbus/Galevo can turn heating off at plant level even when the cloud
+        # omits OFF from the per-zone mode options. Home Assistant's default
+        # turn_off implementation requires OFF to be advertised in hvac_modes.
+        if (
+            self.device.plant_mode_supported
+            or self.device.is_zone_mode_options_contains_off(self.zone)
+        ):
             supported_modes.append(HVACMode.OFF)
 
         return supported_modes
