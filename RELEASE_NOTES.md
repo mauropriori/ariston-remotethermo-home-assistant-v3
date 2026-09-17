@@ -1,4 +1,4 @@
-# Ariston NET 0.20.1
+# Ariston NET 0.1.0
 
 This is the first release of the `ariston_net` maintenance fork. It is based on
 fustom's v3 asynchronous integration and retains the project lineage and credit

@@ -121,17 +121,31 @@ but they cannot be responsibly verified with the hardware available to this
 fork. They can be reconsidered individually when a reproducible issue, device
 trace and tester are available.
 
-## Hardware validation scope
+## Device compatibility and validation scope
 
-Real-world validation for this fork is intentionally limited to:
+### Regression-tested with this fork
+
+Real-world validation of the changes introduced by Ariston NET is intentionally
+limited to:
 
 - **Ariston Nimbus 70 M, 2018 generation, non-R32**;
 - **Ariston Lydos Hybrid 100 L**.
 
-The upstream project supports more models, and that code remains present unless
-explicitly documented otherwise. The list above defines what can be regression
-tested by this fork's maintainer; it is not a claim that other upstream-supported
-devices have been removed.
+### Models tested by the original fustom integration
+
+The original v3 integration explicitly reports successful tests with:
+
+- **Ariston Alteas One 24**;
+- **Ariston Velis Evo**;
+- **Ariston Velis Lux**;
+- **Ariston Lydos Hybrid**.
+
+Their upstream support code remains present unless explicitly documented
+otherwise. These four models have not yet been regression-tested against the
+changes in this fork, so they retain upstream compatibility rather than the
+stronger validation level of the two devices above. Other Remote Thermo models
+may also work, but are not claimed as tested until a reproducible report and a
+tester are available.
 
 ## Cloud-resilience defaults
 
@@ -159,6 +173,10 @@ installation during validation. Because this is a new domain, legacy `ariston`
 config entries are not migrated automatically.
 
 ## Installation with HACS
+
+The recommended channel is the latest GitHub release. This repository uses a
+versioned `ariston_net.zip` package so HACS installs only the integration files
+that belong under `custom_components/ariston_net`.
 
 1. In HACS, add
    `https://github.com/mauropriori/ariston_net` as a
