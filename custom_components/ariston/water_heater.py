@@ -19,7 +19,7 @@ from .const import (
     DOMAIN,
     AristonWaterHeaterEntityDescription,
 )
-from .coordinator import DeviceDataUpdateCoordinator, PendingWrite
+from .coordinator import DeviceDataUpdateCoordinator
 from .entity import AristonEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -141,23 +141,29 @@ class AristonWaterHeater(AristonEntity, WaterHeaterEntity):
             self.name,
         )
 
-        await self.device.async_set_water_heater_temperature(temperature)
         if self.device.whe_type == WheType.LydosHybrid:
-            self.coordinator.pending_writes["temperature"] = PendingWrite(
-                prop="temperature", expected=temperature
+            await self.coordinator.async_execute_tracked_write(
+                "temperature",
+                temperature,
+                self.device.async_set_water_heater_temperature,
             )
+            return
+
+        await self.device.async_set_water_heater_temperature(temperature)
         self.async_write_ha_state()
 
     async def async_set_operation_mode(self, operation_mode):
         """Set operation mode."""
-        await self.device.async_set_water_heater_operation_mode(operation_mode)
         if self.device.whe_type == WheType.LydosHybrid:
-            if operation_mode == LydosPlantMode.BOOST.name:
-                self.coordinator.pending_writes.pop("operation_mode", None)
-            else:
-                self.coordinator.pending_writes["operation_mode"] = PendingWrite(
-                    prop="operation_mode", expected=operation_mode
-                )
+            await self.coordinator.async_execute_tracked_write(
+                "operation_mode",
+                operation_mode,
+                self.device.async_set_water_heater_operation_mode,
+                track_confirmation=operation_mode != LydosPlantMode.BOOST.name,
+            )
+            return
+
+        await self.device.async_set_water_heater_operation_mode(operation_mode)
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs) -> None:

@@ -50,6 +50,7 @@ from .const import (
 from .coordinator import DeviceDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+_SHARED_CLIENT_KEY = "shared_client_key"
 
 
 @dataclass
@@ -59,6 +60,7 @@ class _SharedAristonClient:
     ariston: Ariston = field(default_factory=Ariston)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     connected: bool = False
+    entry_ids: set[str] = field(default_factory=set)
 
 
 def _client_key(entry: ConfigEntry, api_url: str, user_agent: str) -> str:
@@ -72,6 +74,54 @@ def _client_key(entry: ConfigEntry, api_url: str, user_agent: str) -> str:
         )
     )
     return hashlib.sha256(credentials.encode()).hexdigest()
+
+
+async def _async_release_shared_client(
+    domain_data: dict, client_key: str, entry_id: str
+) -> None:
+    """Release an entry's reference to a shared account client."""
+    shared_clients: dict[str, _SharedAristonClient] = domain_data.get(
+        SHARED_CLIENTS, {}
+    )
+    shared_client = shared_clients.get(client_key)
+    if shared_client is None:
+        return
+
+    async with shared_client.lock:
+        shared_client.entry_ids.discard(entry_id)
+        if (
+            not shared_client.entry_ids
+            and shared_clients.get(client_key) is shared_client
+        ):
+            shared_clients.pop(client_key, None)
+
+
+async def _async_cleanup_failed_setup(
+    domain_data: dict, client_key: str, entry: ConfigEntry
+) -> None:
+    """Remove runtime state and the client reference for a failed setup."""
+    domain_data.pop(entry.unique_id, None)
+    await _async_release_shared_client(domain_data, client_key, entry.entry_id)
+
+
+async def _async_cleanup_failed_setup_safely(
+    domain_data: dict, client_key: str, entry: ConfigEntry
+) -> None:
+    """Complete failed-setup cleanup before propagating cancellation."""
+    cleanup_task = asyncio.create_task(
+        _async_cleanup_failed_setup(domain_data, client_key, entry)
+    )
+    cancelled = False
+    while not cleanup_task.done():
+        try:
+            await asyncio.shield(cleanup_task)
+        except asyncio.CancelledError:
+            cancelled = True
+
+    # Propagate any cleanup failure before restoring cancellation semantics.
+    cleanup_task.result()
+    if cancelled:
+        raise asyncio.CancelledError
 
 
 async def _async_optional_first_refresh(
@@ -115,6 +165,10 @@ SET_ITEM_BY_ID_SCHEMA = vol.Schema(
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Ariston from a config entry."""
+    domain_data: dict | None = None
+    client_key: str | None = None
+    shared_client: _SharedAristonClient | None = None
+    client_registered = False
     try:
         api_url_setting = entry.data.get(API_URL_SETTING, ARISTON_API_URL)
 
@@ -124,10 +178,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         shared_clients: dict[str, _SharedAristonClient] = domain_data.setdefault(
             SHARED_CLIENTS, {}
         )
+        client_key = _client_key(entry, api_url_setting, api_user_agent)
         shared_client = shared_clients.setdefault(
-            _client_key(entry, api_url_setting, api_user_agent),
+            client_key,
             _SharedAristonClient(),
         )
+        shared_client.entry_ids.add(entry.entry_id)
+        client_registered = True
 
         async with shared_client.lock:
             if not shared_client.connected:
@@ -145,12 +202,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     raise ConfigEntryAuthFailed
                 shared_client.connected = True
 
-            device = await shared_client.ariston.async_hello(
-                entry.data[CONF_DEVICE].get(DeviceAttribute.GW),
-                hass.config.units is METRIC_SYSTEM,
-            )
+            gateway = entry.data[CONF_DEVICE].get(DeviceAttribute.GW)
+            is_metric = hass.config.units is METRIC_SYSTEM
+            device = await shared_client.ariston.async_hello(gateway, is_metric)
+            if device is None:
+                # The account client can outlive one entry reload. Refresh its
+                # discovery cache once in case devices changed in the cloud.
+                await shared_client.ariston.async_discover()
+                device = await shared_client.ariston.async_hello(gateway, is_metric)
         if device is None:
-            return False
+            raise ConfigEntryNotReady(f"Ariston device {gateway} was not discovered")
 
         await device.async_get_features()
 
@@ -167,6 +228,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry_data.setdefault(ENERGY_COORDINATOR, None)
         entry_data.setdefault(BUS_ERRORS_COORDINATOR, None)
         entry_data[COORDINATOR] = coordinator
+        entry_data[_SHARED_CLIENT_KEY] = client_key
 
         await coordinator.async_config_entry_first_refresh()
 
@@ -237,9 +299,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 async_set_item_by_id_service,
                 schema=SET_ITEM_BY_ID_SCHEMA,
             )
-    except ConfigEntryAuthFailed:
+    except asyncio.CancelledError:
+        if client_registered and domain_data is not None and client_key is not None:
+            # Finish releasing the shared account reference even while Home
+            # Assistant is cancelling setup during shutdown or reload.
+            await _async_cleanup_failed_setup_safely(
+                domain_data, client_key, entry
+            )
+        raise
+    except (ConfigEntryAuthFailed, ConfigEntryNotReady):
+        if client_registered and domain_data is not None and client_key is not None:
+            await _async_cleanup_failed_setup_safely(
+                domain_data, client_key, entry
+            )
         raise
     except Exception as error:
+        if client_registered and domain_data is not None and client_key is not None:
+            await _async_cleanup_failed_setup_safely(
+                domain_data, client_key, entry
+            )
         _LOGGER.exception("")
         raise ConfigEntryNotReady from error
 
@@ -256,6 +334,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.unique_id)
+        domain_data = hass.data[DOMAIN]
+        entry_data = domain_data.pop(entry.unique_id, {})
+        client_key = entry_data.get(_SHARED_CLIENT_KEY)
+        if client_key is not None:
+            await _async_release_shared_client(
+                domain_data,
+                client_key,
+                entry.entry_id,
+            )
 
     return unload_ok
