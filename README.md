@@ -32,7 +32,9 @@ This project would not exist without the work of:
 
 This fork is not an official Ariston product. Copyright and authorship of the
 upstream code remain with their respective contributors; see the repository
-history and [LICENSE](LICENSE).
+history and [LICENSE](LICENSE). The bundled Ariston icon is sourced from the
+[Home Assistant Brands](https://github.com/home-assistant/brands) project;
+Ariston names and marks belong to their respective owner.
 
 ## What this fork changes
 
