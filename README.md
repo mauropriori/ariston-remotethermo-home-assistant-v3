@@ -106,10 +106,20 @@ plant-mode control is available and sends the normal plant OFF command.
 ### Lydos commands sometimes revert or appear ignored
 
 The cloud can acknowledge a write before the following state snapshot reflects
-it. Lydos temperature and non-BOOST mode writes are confirmed on subsequent
-scheduled polls and retried a bounded number of times. A coordinator lock makes
-the poll/verification sequence atomic with respect to new user commands, so an
-old retry cannot replace a newer choice.
+it. Lydos temperature and non-BOOST mode writes are checked on the next
+scheduled poll, but are never replayed automatically. This prevents a stale
+Home Assistant command from competing with a later change made in the official
+Ariston app and does not add cloud requests. A coordinator lock keeps polling
+and optimistic local state updates consistent.
+
+### Lydos becomes UNKNOWN when temporary BOOST ends
+
+Some Lydos Hybrid cloud responses return `null`, `0`, an unknown code or even
+malformed data at the end of temporary BOOST. Ariston NET remembers the last
+stable mode (`IMEMORY`, `GREEN` or `PROGRAM`) and exposes it until the cloud
+converges. A different valid mode is accepted after two consecutive snapshots,
+so app-side changes are not hidden indefinitely. Recovery is read-only: the
+integration never writes a fallback mode to the appliance.
 
 ## Upstream pull requests used selectively
 
@@ -121,7 +131,7 @@ adapted on top of that upstream `main` baseline.
 | --- | --- | --- |
 | [#452](https://github.com/fustom/ariston-remotethermo-home-assistant-v3/pull/452) | Conservative intervals and explicit rate-limit handling. This fork extends the idea with one shared account client, a serialized library-level queue, timeout handling and `Retry-After` support. | Coordinator-only backoff would still allow the two device entries and optional coordinators to multiply concurrent requests. |
 | [#476](https://github.com/fustom/ariston-remotethermo-home-assistant-v3/pull/476) | An energy failure must not abort setup. The same isolation was generalized to both energy and bus-error coordinators, which are now opt-in. | The original change covered only the initial energy refresh and still created the optional coordinator unconditionally. |
-| [#488](https://github.com/fustom/ariston-remotethermo-home-assistant-v3/pull/488) | Confirm water-heater writes during later normal polls, with no additional read calls. The implementation is limited to Lydos Hybrid and hardened with serialization, bounded retries and stale-command protection. | Applying it to every water-heater model could change established behavior on hardware that is unavailable for testing. |
+| [#488](https://github.com/fustom/ariston-remotethermo-home-assistant-v3/pull/488) | Check water-heater writes during a later normal poll, with no additional read calls. The implementation is limited to Lydos Hybrid and serialized with user commands. Automatic replay was deliberately removed after real-device testing showed that it could compete with the official app. | Applying it to every water-heater model could change established behavior on hardware that is unavailable for testing; replaying stale writes is also unsafe when another client controls the same appliance. |
 | [#489](https://github.com/fustom/ariston-remotethermo-home-assistant-v3/pull/489) | The `HP_SYS` feature-gating correction for heat-pump status. | New BSB, resistor, weather, DHW boost and buffer entities were omitted because they cannot be validated on the two available devices and would add surface area and cloud writes. |
 | [#321](https://github.com/fustom/ariston-remotethermo-home-assistant-v3/pull/321) | The useful Lydos Hybrid current-temperature and operating-mode exposure, with the device-provided temperature unit. | The PR contains broad, older structural and typing changes unrelated to these entities; only the small compatible subset was retained. |
 | [#445](https://github.com/fustom/ariston-remotethermo-home-assistant-v3/pull/445) | The identified need to expose climate OFF when Nimbus omits it from zone capabilities. | The large PR mixes unrelated zone, metric and configuration changes. This fork uses plant-level OFF directly instead of the proposed summer-mode workaround. |

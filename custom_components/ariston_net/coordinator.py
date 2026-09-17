@@ -10,25 +10,18 @@ from datetime import timedelta
 from typing import Any
 
 from aiohttp import ClientError
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
 from ariston_net_api import ConnectionException, RateLimitException
 from ariston_net_api.base_device import AristonBaseDevice
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-DEVICE_WRITE_PROPS: dict[str, tuple[str, str]] = {
-    "temperature": (
-        "water_heater_target_temperature",
-        "async_set_water_heater_temperature",
-    ),
-    "operation_mode": (
-        "water_heater_current_mode_text",
-        "async_set_water_heater_operation_mode",
-    ),
+DEVICE_WRITE_PROPS: dict[str, str] = {
+    "temperature": "water_heater_target_temperature",
+    "operation_mode": "water_heater_current_mode_text",
 }
 
 
@@ -38,8 +31,6 @@ class PendingWrite:
 
     prop: str
     expected: Any
-    retries: int = 0
-    max_retries: int = 2
 
 
 class DeviceDataUpdateCoordinator(DataUpdateCoordinator):
@@ -66,7 +57,7 @@ class DeviceDataUpdateCoordinator(DataUpdateCoordinator):
         self.device = device
         self.pending_writes: dict[str, PendingWrite] = {}
         self.write_lock = asyncio.Lock()
-        self._retry_pending_writes = False
+        self._verify_pending_writes = False
 
     async def _async_refresh(
         self,
@@ -76,8 +67,8 @@ class DeviceDataUpdateCoordinator(DataUpdateCoordinator):
         raise_on_entry_error: bool = False,
     ) -> None:
         """Track whether Home Assistant initiated a scheduled poll."""
-        previous_retry_state = self._retry_pending_writes
-        self._retry_pending_writes = scheduled
+        previous_verification_state = self._verify_pending_writes
+        self._verify_pending_writes = scheduled
         try:
             await super()._async_refresh(
                 log_failures=log_failures,
@@ -86,19 +77,18 @@ class DeviceDataUpdateCoordinator(DataUpdateCoordinator):
                 raise_on_entry_error=raise_on_entry_error,
             )
         finally:
-            self._retry_pending_writes = previous_retry_state
+            self._verify_pending_writes = previous_verification_state
 
     async def _async_update_and_verify(self):
         """Poll once, normalize cloud failures, then verify pending writes."""
-        if self._retry_pending_writes:
-            # Keep the cloud snapshot and its pending-write verification atomic
-            # with respect to optimistic local changes made by user commands.
-            async with self.write_lock:
-                data = await self._async_update_device_state()
+        # Keep every cloud snapshot atomic with respect to optimistic local
+        # changes made by user commands. Only scheduled polls consume pending
+        # confirmations, but manual refreshes must use the same lock.
+        async with self.write_lock:
+            data = await self._async_update_device_state()
+            if self._verify_pending_writes:
                 await self._async_check_pending_writes_locked()
-                return data
-
-        return await self._async_update_device_state()
+            return data
 
     async def _async_update_device_state(self):
         """Poll once and normalize cloud failures for Home Assistant."""
@@ -136,7 +126,7 @@ class DeviceDataUpdateCoordinator(DataUpdateCoordinator):
         self.async_update_listeners()
 
     async def _async_check_pending_writes(self) -> None:
-        """Retry a rejected water-heater write on later regular polls only."""
+        """Passively verify a water-heater write on a later regular poll."""
         async with self.write_lock:
             await self._async_check_pending_writes_locked()
 
@@ -148,36 +138,20 @@ class DeviceDataUpdateCoordinator(DataUpdateCoordinator):
             if self.pending_writes.get(prop) is not pending:
                 continue
 
-            property_names = DEVICE_WRITE_PROPS.get(prop)
-            if property_names is None:
+            read_attribute = DEVICE_WRITE_PROPS.get(prop)
+            if read_attribute is None:
                 self.pending_writes.pop(prop, None)
                 continue
 
-            read_attribute, write_method = property_names
             actual = getattr(self.device, read_attribute, None)
+            self.pending_writes.pop(prop, None)
             if actual == pending.expected:
-                self.pending_writes.pop(prop, None)
                 continue
 
-            if pending.retries >= pending.max_retries:
-                _LOGGER.warning(
-                    "Ariston write verification for %s gave up after %s retries "
-                    "(actual %s, expected %s)",
-                    prop,
-                    pending.max_retries,
-                    actual,
-                    pending.expected,
-                )
-                self.pending_writes.pop(prop, None)
-                continue
-
-            pending.retries += 1
-            try:
-                await getattr(self.device, write_method)(pending.expected)
-            except Exception as error:  # noqa: BLE001 - retry must not stop polling
-                _LOGGER.warning(
-                    "Retrying Ariston write for %s failed; it will be tried on "
-                    "the next regular poll: %s",
-                    prop,
-                    error,
-                )
+            _LOGGER.warning(
+                "Ariston write for %s was not confirmed by the next regular "
+                "poll (actual %s, expected %s); it will not be retried",
+                prop,
+                actual,
+                pending.expected,
+            )

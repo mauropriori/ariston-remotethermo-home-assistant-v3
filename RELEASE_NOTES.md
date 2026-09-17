@@ -1,10 +1,19 @@
-# Ariston NET 0.1.1
+# Ariston NET 0.1.2
 
-This patch release fixes the config flow failing with `Invalid handler
-specified` when the legacy Remote Thermo integration or its Python dependency is
-also installed. The companion API fork now uses the independent distribution
-name `ariston-net-api` and import namespace `ariston_net_api`, eliminating the
-runtime package collision with upstream `ariston`.
+This patch release fixes Lydos Hybrid temporary BOOST recovery and removes
+automatic command replay that could compete with the official Ariston app.
+
+After BOOST, malformed cloud modes (`null`, `0`, unknown numbers or strings,
+booleans, arrays and objects) no longer make the entity unusable. The companion
+API library preserves the stable mode that preceded BOOST without writing it
+back to the appliance. Delayed snapshots, BOOST initiated by the official app,
+Home Assistant restarts during BOOST and repeated BOOST commands are covered by
+the regression suite.
+
+Temperature and non-BOOST mode writes are now checked passively on the next
+scheduled poll. A mismatch is logged once and is never replayed, preventing a
+stale Home Assistant value from overwriting a later app-side change and avoiding
+additional API calls.
 
 It includes all functionality introduced in the initial 0.1.0 release and
 retains the project lineage and credit described in the README.
@@ -20,7 +29,8 @@ retains the project lineage and credit described in the README.
 - Prevents Lydos energy HTTP 500 responses from blocking core controls.
 - Restores HVAC OFF for plant-controlled older Nimbus systems.
 - Adds the Lydos Hybrid current-temperature and operating-mode entities.
-- Verifies Lydos writes on later scheduled polls with bounded, race-safe retries.
+- Passively verifies Lydos writes without retrying or adding API calls.
+- Preserves the last stable Lydos mode across temporary BOOST cloud anomalies.
 - Pins the companion `python-ariston-api` fork to an exact reviewed commit.
 
 ## Reviewed upstream work

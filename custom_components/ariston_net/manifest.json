@@ -9,8 +9,8 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/mauropriori/ariston_net/issues",
   "loggers": ["ariston_net_api"],
-  "requirements": ["ariston-net-api@git+https://github.com/mauropriori/python-ariston-api.git@beedc371dd3a93f437bd1d3bea4b30ccf207cc23"],
+  "requirements": ["ariston-net-api@git+https://github.com/mauropriori/python-ariston-api.git@e2a294553c346c87e29c7eec434c271a97ed45c3"],
   "ssdp": [],
-  "version": "0.1.1",
+  "version": "0.1.2",
   "zeroconf": []
 }
